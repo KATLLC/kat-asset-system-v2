@@ -1,6 +1,6 @@
 # ============================================================
 # KAT — IT Asset Business System v2
-# Professional Streamlit Dashboard v2.0
+# Professional Streamlit Dashboard v2.1
 # ============================================================
 
 import streamlit as st
@@ -34,7 +34,7 @@ st.markdown("""
 .main { background-color: #F0F4F8; }
 
 .block-container {
-    padding: 0 24px 32px 24px !important;
+    padding: 0 48px 32px 48px !important;
     max-width: 100% !important;
 }
 
@@ -52,19 +52,20 @@ header { visibility: hidden; }
     align-items: center;
     box-shadow: 0 4px 20px rgba(0,0,0,0.3);
     border-radius: 0 0 12px 12px;
-    margin-bottom: 8px;
+    margin: 0 0 16px 0;
 }
 .kat-logo-area {
     display: flex;
     align-items: center;
     gap: 16px;
+    background: white;
+    padding: 10px 18px;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 .kat-logo-img {
-    height: 52px;
+    height: 48px;
     width: auto;
-    background: white;
-    padding: 6px 10px;
-    border-radius: 8px;
 }
 .kat-header-right {
     text-align: right;
@@ -84,18 +85,8 @@ header { visibility: hidden; }
     font-size: 10px;
     font-weight: 600;
     letter-spacing: 1px;
-    margin-top: 4px;
+    margin-top: 6px;
     display: inline-block;
-}
-.kat-timestamp {
-    color: rgba(255,255,255,0.5);
-    font-size: 11px;
-    margin-top: 4px;
-}
-.kat-rate {
-    color: rgba(255,255,255,0.7);
-    font-size: 11px;
-    font-weight: 500;
 }
 
 /* SECTION HEADERS */
@@ -193,13 +184,6 @@ header { visibility: hidden; }
     height: 100%;
     border-radius: 20px;
     transition: width 0.8s ease;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: 8px;
-    color: white;
-    font-size: 10px;
-    font-weight: 700;
 }
 .prog-legend {
     display: flex;
@@ -239,7 +223,7 @@ header { visibility: hidden; }
 
 /* MOBILE */
 @media (max-width: 768px) {
-    .block-container { padding: 0 12px 24px 12px !important; }
+    .block-container { padding: 0 16px 24px 16px !important; }
     .kat-header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
     .kat-company-name { font-size: 16px; }
     .kat-logo-img { height: 40px; }
@@ -323,7 +307,6 @@ def load_data():
         stock_sold_pct = safe_float(gs(50))
         best_category = gs(55)
 
-        # Lots
         lots_procured = 0
         lots_sold = 0
         lots_in_stock = 0
@@ -340,7 +323,6 @@ def load_data():
                     elif status in ['In Stock','Pending Shipment']:
                         lots_in_stock += 1
 
-        # P&L
         gross_profit = 0
         margin_pct = 0
         roi_pct = 0
@@ -359,7 +341,6 @@ def load_data():
             if total_landed_sum > 0:
                 roi_pct = gross_profit / total_landed_sum
 
-        # Cost breakdown (in correct order)
         cost_breakdown = {
             'Purchase Cost': proc_spend,
             'US Logistics': 0,
@@ -481,8 +462,6 @@ st.markdown(f"""
     <div class="kat-header-right">
         <div class="kat-company-name">Key Asset Technologies</div>
         <div class="kat-live-badge">🟢 LIVE DATA</div>
-        <div class="kat-timestamp">Updated: {d['timestamp']}</div>
-        <div class="kat-rate">USD/AED: {d['usd_aed_rate']:.4f}</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -543,13 +522,12 @@ with col4:
     st.markdown(kpi_card("💎", "INVENTORY VALUE", fmt_usd(d['inv_value_usd']), "At landed cost", "purple"), unsafe_allow_html=True)
 
 # ============================================================
-# SECTION 4 — OPERATIONAL PROGRESS (5 horizontal bars)
+# SECTION 4 — OPERATIONAL PROGRESS
 # ============================================================
 section_hdr("📊", "OPERATIONAL PROGRESS")
 
 col_left, col_right = st.columns(2)
 
-# Bar 1 — Capital Utilization
 with col_left:
     st.markdown(progress_bar_row(
         title="Capital Utilization",
@@ -563,7 +541,6 @@ with col_left:
         ]
     ), unsafe_allow_html=True)
 
-# Bar 2 — Stock Movement
 with col_right:
     st.markdown(progress_bar_row(
         title="Stock Movement (Units)",
@@ -579,7 +556,6 @@ with col_right:
 
 col_left, col_right = st.columns(2)
 
-# Bar 3 — Break Even Progress
 with col_left:
     st.markdown(progress_bar_row(
         title="Break Even Progress",
@@ -593,7 +569,6 @@ with col_left:
         ]
     ), unsafe_allow_html=True)
 
-# Bar 4 — Lots Sold vs Procured
 with col_right:
     lots_pct = d['lots_sold'] / d['lots_procured'] if d['lots_procured'] > 0 else 0
     st.markdown(progress_bar_row(
@@ -608,7 +583,6 @@ with col_right:
         ]
     ), unsafe_allow_html=True)
 
-# Bar 5 — Pipeline Speed
 total_pipeline = d['avg_days_ship'] + d['avg_days_clear']
 pipeline_pct = min(total_pipeline / 30, 1) if total_pipeline > 0 else 0
 st.markdown(progress_bar_row(
