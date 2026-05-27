@@ -1,6 +1,6 @@
 # ============================================================
 # KAT — IT Asset Business System v2
-# Professional Streamlit Dashboard v2.1
+# Professional Streamlit Dashboard v2.2
 # ============================================================
 
 import streamlit as st
@@ -23,27 +23,23 @@ st.set_page_config(
 )
 
 # ============================================================
-# CUSTOM CSS
+# CSS
 # ============================================================
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 * { font-family: 'Inter', sans-serif !important; }
-
 .main { background-color: #F0F4F8; }
-
 .block-container {
     padding: 0 48px 32px 48px !important;
     max-width: 100% !important;
 }
-
 #MainMenu { visibility: hidden; }
 footer { visibility: hidden; }
 header { visibility: hidden; }
 .stDeployButton { display: none; }
 
-/* HEADER */
 .kat-header {
     background: linear-gradient(135deg, #0A1628 0%, #1B3A6B 50%, #2471A3 100%);
     padding: 18px 28px;
@@ -67,9 +63,7 @@ header { visibility: hidden; }
     height: 48px;
     width: auto;
 }
-.kat-header-right {
-    text-align: right;
-}
+.kat-header-right { text-align: right; }
 .kat-company-name {
     color: white;
     font-size: 22px;
@@ -89,7 +83,6 @@ header { visibility: hidden; }
     display: inline-block;
 }
 
-/* SECTION HEADERS */
 .section-header {
     background: linear-gradient(90deg, #1B3A6B, #2471A3);
     color: white;
@@ -106,7 +99,6 @@ header { visibility: hidden; }
     border-left: 4px solid #27AE60;
 }
 
-/* KPI CARDS */
 .kpi-card {
     background: white;
     border-radius: 14px;
@@ -114,19 +106,13 @@ header { visibility: hidden; }
     box-shadow: 0 2px 12px rgba(0,0,0,0.06);
     border-top: 4px solid #2471A3;
     height: 100%;
-    position: relative;
-    overflow: hidden;
 }
 .kpi-card.green { border-top-color: #27AE60; }
 .kpi-card.red { border-top-color: #E74C3C; }
 .kpi-card.gold { border-top-color: #F39C12; }
 .kpi-card.purple { border-top-color: #9B59B6; }
 .kpi-card.teal { border-top-color: #1ABC9C; }
-.kpi-icon {
-    font-size: 20px;
-    margin-bottom: 6px;
-    display: block;
-}
+.kpi-icon { font-size: 20px; margin-bottom: 6px; display: block; }
 .kpi-label {
     font-size: 10px;
     font-weight: 700;
@@ -141,15 +127,9 @@ header { visibility: hidden; }
     color: #1B3A6B;
     line-height: 1;
     margin-bottom: 4px;
-    letter-spacing: -0.5px;
 }
-.kpi-sub {
-    font-size: 11px;
-    color: #BDC3C7;
-    font-weight: 400;
-}
+.kpi-sub { font-size: 11px; color: #BDC3C7; }
 
-/* PROGRESS BAR ROW */
 .prog-row {
     background: white;
     border-radius: 12px;
@@ -163,22 +143,13 @@ header { visibility: hidden; }
     align-items: center;
     margin-bottom: 8px;
 }
-.prog-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: #5D6D7E;
-}
-.prog-pct {
-    font-size: 14px;
-    font-weight: 800;
-    color: #1B3A6B;
-}
+.prog-title { font-size: 13px; font-weight: 600; color: #5D6D7E; }
+.prog-pct { font-size: 14px; font-weight: 800; color: #1B3A6B; }
 .prog-bar-bg {
     background: #EEF2F9;
     border-radius: 20px;
     height: 14px;
     overflow: hidden;
-    position: relative;
 }
 .prog-bar-fill {
     height: 100%;
@@ -205,14 +176,6 @@ header { visibility: hidden; }
     display: inline-block;
 }
 
-/* DIVIDER */
-.kat-divider {
-    height: 1px;
-    background: linear-gradient(90deg, transparent, #D5E8F5, transparent);
-    margin: 12px 0;
-}
-
-/* CHART CONTAINER */
 .chart-container {
     background: white;
     border-radius: 14px;
@@ -221,7 +184,6 @@ header { visibility: hidden; }
     margin: 6px 0;
 }
 
-/* MOBILE */
 @media (max-width: 768px) {
     .block-container { padding: 0 16px 24px 16px !important; }
     .kat-header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
@@ -233,14 +195,14 @@ header { visibility: hidden; }
 """, unsafe_allow_html=True)
 
 # ============================================================
-# GOOGLE SHEETS CONNECTION
+# CONNECTION
 # ============================================================
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets.readonly",
     "https://www.googleapis.com/auth/drive.readonly"
 ]
 SHEET_ID = "1WySRL2qXuByeAXPVdEBk9nGWFKasn1vEvhP-yAYH2R4"
-LOGO_URL = "https://drive.google.com/uc?export=view&id=18MShHQWnYrGtNFCKICQ7Ss166R101__7"
+LOGO_URL = "https://drive.google.com/thumbnail?id=18MShHQWnYrGtNFCKICQ7Ss166R101__7&sz=w400"
 
 @st.cache_resource(ttl=600)
 def get_client():
@@ -276,10 +238,8 @@ def load_data():
             except:
                 return 0
 
-        proc_data = get_sheet('PROCUREMENT')
         inv_data = get_sheet('INVENTORY')
         lc_data = get_sheet('LANDED COST')
-        sales_data = get_sheet('SALES')
         ref_data = get_sheet('REFERENCE')
 
         usd_aed_rate = safe_float(ref_data[5][1] if len(ref_data) > 5 else 3.6725, 3.6725)
@@ -289,23 +249,22 @@ def load_data():
         total_revenue = safe_float(gs(9))
         cash_balance = safe_float(gs(10))
         inv_value_usd = safe_float(gs(11))
-        inv_value_aed = safe_float(gs(12))
-        biz_value = safe_float(gs(13))
         auction_budget = safe_float(gs(18))
         spent_auctions = safe_float(gs(19))
         avail_bidding = safe_float(gs(20))
-        pct_used = safe_float(gs(21))
-        pct_avail = safe_float(gs(22))
         avg_days_ship = safe_float(gs(31))
         avg_days_clear = safe_float(gs(32))
-        cost_efficiency = safe_float(gs(33))
-        avg_days_stock = safe_float(gs(36))
-        break_even = safe_float(gs(41))
         units_procured = safe_float(gs(47))
         units_sold = safe_float(gs(48))
         units_remaining = safe_float(gs(49))
-        stock_sold_pct = safe_float(gs(50))
         best_category = gs(55)
+
+        # CALCULATE percentages from raw numbers
+        # This avoids the formatting bug from SETTINGS sheet
+        pct_used = (proc_spend / total_capital) if total_capital > 0 else 0
+        pct_avail = (avail_bidding / total_capital) if total_capital > 0 else 0
+        stock_sold_pct = (units_sold / units_procured) if units_procured > 0 else 0
+        break_even = (total_revenue / proc_spend) if proc_spend > 0 else 0
 
         lots_procured = 0
         lots_sold = 0
@@ -367,8 +326,6 @@ def load_data():
             'total_revenue': total_revenue,
             'cash_balance': cash_balance,
             'inv_value_usd': inv_value_usd,
-            'inv_value_aed': inv_value_aed,
-            'biz_value': biz_value,
             'auction_budget': auction_budget,
             'spent_auctions': spent_auctions,
             'avail_bidding': avail_bidding,
@@ -376,9 +333,6 @@ def load_data():
             'pct_avail': pct_avail,
             'avg_days_ship': avg_days_ship,
             'avg_days_clear': avg_days_clear,
-            'cost_efficiency': cost_efficiency,
-            'avg_days_stock': avg_days_stock,
-            'break_even': break_even,
             'units_procured': units_procured,
             'units_sold': units_sold,
             'units_remaining': units_remaining,
@@ -387,6 +341,7 @@ def load_data():
             'gross_profit': gross_profit,
             'margin_pct': margin_pct,
             'roi_pct': roi_pct,
+            'break_even': break_even,
             'total_landed_sum': total_landed_sum,
             'lots_procured': lots_procured,
             'lots_sold': lots_sold,
@@ -401,10 +356,6 @@ def load_data():
 def fmt_usd(val):
     if val is None: return "$0.00"
     return f"${val:,.2f}"
-
-def fmt_aed(val):
-    if val is None: return "AED 0.00"
-    return f"AED {val:,.2f}"
 
 def fmt_pct(val):
     if val is None: return "0.00%"
@@ -438,11 +389,8 @@ def progress_bar_row(title, pct, pct_label, fill_color, legend_items):
 def section_hdr(icon, title):
     st.markdown(f'<div class="section-header">{icon}&nbsp;&nbsp;{title}</div>', unsafe_allow_html=True)
 
-def divider():
-    st.markdown('<div class="kat-divider"></div>', unsafe_allow_html=True)
-
 # ============================================================
-# LOAD DATA
+# LOAD
 # ============================================================
 data = load_data()
 if data is None:
@@ -522,83 +470,7 @@ with col4:
     st.markdown(kpi_card("💎", "INVENTORY VALUE", fmt_usd(d['inv_value_usd']), "At landed cost", "purple"), unsafe_allow_html=True)
 
 # ============================================================
-# SECTION 4 — OPERATIONAL PROGRESS
-# ============================================================
-section_hdr("📊", "OPERATIONAL PROGRESS")
-
-col_left, col_right = st.columns(2)
-
-with col_left:
-    st.markdown(progress_bar_row(
-        title="Capital Utilization",
-        pct=d['pct_used'],
-        pct_label=f"{fmt_pct(d['pct_used'])} deployed",
-        fill_color="#E67E22",
-        legend_items=[
-            {"color": "#E67E22", "label": f"Spent: {fmt_usd(d['proc_spend'])}"},
-            {"color": "#27AE60", "label": f"Available: {fmt_usd(d['avail_bidding'])}"},
-            {"color": "#2471A3", "label": f"Total: {fmt_usd(d['total_capital'])}"}
-        ]
-    ), unsafe_allow_html=True)
-
-with col_right:
-    st.markdown(progress_bar_row(
-        title="Stock Movement (Units)",
-        pct=d['stock_sold_pct'],
-        pct_label=f"{fmt_pct(d['stock_sold_pct'])} sold",
-        fill_color="#27AE60",
-        legend_items=[
-            {"color": "#27AE60", "label": f"Sold: {fmt_num(d['units_sold'])} units"},
-            {"color": "#E67E22", "label": f"Remaining: {fmt_num(d['units_remaining'])} units"},
-            {"color": "#2471A3", "label": f"At Cost: {fmt_usd(d['inv_value_usd'])}"}
-        ]
-    ), unsafe_allow_html=True)
-
-col_left, col_right = st.columns(2)
-
-with col_left:
-    st.markdown(progress_bar_row(
-        title="Break Even Progress",
-        pct=min(d['break_even'], 1),
-        pct_label=f"{fmt_pct(min(d['break_even'], 1))} recovered",
-        fill_color="#27AE60",
-        legend_items=[
-            {"color": "#27AE60", "label": f"Revenue: {fmt_usd(d['total_revenue'])}"},
-            {"color": "#E74C3C", "label": f"Gap: {fmt_usd(max(d['proc_spend'] - d['total_revenue'], 0))}"},
-            {"color": "#2471A3", "label": f"Target: {fmt_usd(d['proc_spend'])}"}
-        ]
-    ), unsafe_allow_html=True)
-
-with col_right:
-    lots_pct = d['lots_sold'] / d['lots_procured'] if d['lots_procured'] > 0 else 0
-    st.markdown(progress_bar_row(
-        title="Lots Sold Progress",
-        pct=lots_pct,
-        pct_label=f"{fmt_pct(lots_pct)} of lots sold",
-        fill_color="#9B59B6",
-        legend_items=[
-            {"color": "#9B59B6", "label": f"Sold: {fmt_num(d['lots_sold'])} lots"},
-            {"color": "#E67E22", "label": f"Remaining: {fmt_num(d['lots_procured'] - d['lots_sold'])} lots"},
-            {"color": "#2471A3", "label": f"Total: {fmt_num(d['lots_procured'])} lots"}
-        ]
-    ), unsafe_allow_html=True)
-
-total_pipeline = d['avg_days_ship'] + d['avg_days_clear']
-pipeline_pct = min(total_pipeline / 30, 1) if total_pipeline > 0 else 0
-st.markdown(progress_bar_row(
-    title="Pipeline Speed (Purchase to Sale-Ready)",
-    pct=pipeline_pct,
-    pct_label=f"{total_pipeline:.1f} days total",
-    fill_color="#E74C3C" if total_pipeline > 14 else "#F39C12" if total_pipeline > 7 else "#27AE60",
-    legend_items=[
-        {"color": "#3498DB", "label": f"Ship: {d['avg_days_ship']:.1f} days"},
-        {"color": "#9B59B6", "label": f"Clear: {d['avg_days_clear']:.1f} days"},
-        {"color": "#E74C3C", "label": f"Target: under 14 days"}
-    ]
-), unsafe_allow_html=True)
-
-# ============================================================
-# SECTION 5 — SALES PERFORMANCE
+# SECTION 4 — SALES PERFORMANCE (moved above operations)
 # ============================================================
 section_hdr("🏆", "SALES PERFORMANCE")
 
@@ -616,6 +488,86 @@ with col3:
 with col4:
     best = d['best_category'] if d['best_category'] else "No sales yet"
     st.markdown(kpi_card("🏆", "BEST CATEGORY", best, "Highest margin category", "green" if d['best_category'] else "gold"), unsafe_allow_html=True)
+
+# ============================================================
+# SECTION 5 — OPERATIONAL PROGRESS
+# ============================================================
+section_hdr("📊", "OPERATIONAL PROGRESS")
+
+col_left, col_right = st.columns(2)
+
+# Bar 1 — Capital Utilization
+with col_left:
+    st.markdown(progress_bar_row(
+        title="Capital Utilization",
+        pct=d['pct_used'],
+        pct_label=fmt_pct(d['pct_used']),
+        fill_color="#E67E22",
+        legend_items=[
+            {"color": "#E67E22", "label": f"Spent: {fmt_usd(d['proc_spend'])}"},
+            {"color": "#27AE60", "label": f"Available: {fmt_usd(d['avail_bidding'])}"},
+            {"color": "#2471A3", "label": f"Total: {fmt_usd(d['total_capital'])}"}
+        ]
+    ), unsafe_allow_html=True)
+
+# Bar 2 — Stock Movement
+with col_right:
+    st.markdown(progress_bar_row(
+        title="Stock Movement",
+        pct=d['stock_sold_pct'],
+        pct_label=fmt_pct(d['stock_sold_pct']),
+        fill_color="#27AE60",
+        legend_items=[
+            {"color": "#27AE60", "label": f"Sold: {fmt_num(d['units_sold'])} units"},
+            {"color": "#E67E22", "label": f"Remaining: {fmt_num(d['units_remaining'])} units"},
+            {"color": "#2471A3", "label": f"Total: {fmt_num(d['units_procured'])} units"}
+        ]
+    ), unsafe_allow_html=True)
+
+col_left, col_right = st.columns(2)
+
+# Bar 3 — Break Even Progress
+with col_left:
+    st.markdown(progress_bar_row(
+        title="Break Even Progress",
+        pct=min(d['break_even'], 1),
+        pct_label=fmt_pct(min(d['break_even'], 1)),
+        fill_color="#27AE60",
+        legend_items=[
+            {"color": "#27AE60", "label": f"Revenue: {fmt_usd(d['total_revenue'])}"},
+            {"color": "#E74C3C", "label": f"Gap to Cover: {fmt_usd(max(d['proc_spend'] - d['total_revenue'], 0))}"},
+            {"color": "#2471A3", "label": f"Total Cost: {fmt_usd(d['proc_spend'])}"}
+        ]
+    ), unsafe_allow_html=True)
+
+# Bar 4 — Units Sold vs Procured (replaced lots progress)
+with col_right:
+    st.markdown(progress_bar_row(
+        title="Units Sold vs Procured",
+        pct=d['stock_sold_pct'],
+        pct_label=f"{fmt_pct(d['stock_sold_pct'])} ({fmt_num(d['units_sold'])} of {fmt_num(d['units_procured'])})",
+        fill_color="#9B59B6",
+        legend_items=[
+            {"color": "#9B59B6", "label": f"Sold: {fmt_num(d['units_sold'])} units"},
+            {"color": "#E67E22", "label": f"Remaining: {fmt_num(d['units_remaining'])} units"},
+            {"color": "#2471A3", "label": f"Total: {fmt_num(d['units_procured'])} units"}
+        ]
+    ), unsafe_allow_html=True)
+
+# Bar 5 — Pipeline Speed (full width)
+total_pipeline = d['avg_days_ship'] + d['avg_days_clear']
+pipeline_pct = min(total_pipeline / 30, 1) if total_pipeline > 0 else 0
+st.markdown(progress_bar_row(
+    title="Pipeline Speed (Purchase to Sale-Ready)",
+    pct=pipeline_pct,
+    pct_label=f"{total_pipeline:.1f} days of 30 day target",
+    fill_color="#E74C3C" if total_pipeline > 14 else "#F39C12" if total_pipeline > 7 else "#27AE60",
+    legend_items=[
+        {"color": "#3498DB", "label": f"Ship Days: {d['avg_days_ship']:.1f}"},
+        {"color": "#9B59B6", "label": f"Clear Days: {d['avg_days_clear']:.1f}"},
+        {"color": "#E74C3C", "label": f"Target: under 14 days"}
+    ]
+), unsafe_allow_html=True)
 
 # ============================================================
 # SECTION 6 — VISUAL ANALYTICS
