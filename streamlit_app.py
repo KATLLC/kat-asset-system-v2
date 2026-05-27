@@ -1,6 +1,6 @@
 # ============================================================
 # KAT — IT Asset Business System v2
-# Professional Streamlit Dashboard v2.2
+# Professional Streamlit Dashboard v2.3 — FINAL
 # ============================================================
 
 import streamlit as st
@@ -32,7 +32,7 @@ st.markdown("""
 * { font-family: 'Inter', sans-serif !important; }
 .main { background-color: #F0F4F8; }
 .block-container {
-    padding: 0 48px 32px 48px !important;
+    padding: 0 64px 32px 64px !important;
     max-width: 100% !important;
 }
 #MainMenu { visibility: hidden; }
@@ -60,7 +60,7 @@ header { visibility: hidden; }
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 .kat-logo-img {
-    height: 48px;
+    height: 60px;
     width: auto;
 }
 .kat-header-right { text-align: right; }
@@ -81,6 +81,12 @@ header { visibility: hidden; }
     letter-spacing: 1px;
     margin-top: 6px;
     display: inline-block;
+}
+.kat-time {
+    color: rgba(255,255,255,0.7);
+    font-size: 11px;
+    margin-top: 6px;
+    font-weight: 400;
 }
 
 .section-header {
@@ -188,7 +194,7 @@ header { visibility: hidden; }
     .block-container { padding: 0 16px 24px 16px !important; }
     .kat-header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
     .kat-company-name { font-size: 16px; }
-    .kat-logo-img { height: 40px; }
+    .kat-logo-img { height: 48px; }
     .kpi-value { font-size: 20px; }
 }
 </style>
@@ -249,23 +255,19 @@ def load_data():
         total_revenue = safe_float(gs(9))
         cash_balance = safe_float(gs(10))
         inv_value_usd = safe_float(gs(11))
-        auction_budget = safe_float(gs(18))
-        spent_auctions = safe_float(gs(19))
-        avail_bidding = safe_float(gs(20))
         avg_days_ship = safe_float(gs(31))
         avg_days_clear = safe_float(gs(32))
         units_procured = safe_float(gs(47))
         units_sold = safe_float(gs(48))
         units_remaining = safe_float(gs(49))
-        best_category = gs(55)
 
-        # CALCULATE percentages from raw numbers
-        # This avoids the formatting bug from SETTINGS sheet
+        # Calculate from raw numbers (avoid format bugs)
         pct_used = (proc_spend / total_capital) if total_capital > 0 else 0
-        pct_avail = (avail_bidding / total_capital) if total_capital > 0 else 0
+        pct_avail = ((total_capital - proc_spend) / total_capital) if total_capital > 0 else 0
+        avail_bidding = total_capital - proc_spend
         stock_sold_pct = (units_sold / units_procured) if units_procured > 0 else 0
-        break_even = (total_revenue / proc_spend) if proc_spend > 0 else 0
 
+        # Lot counts
         lots_procured = 0
         lots_sold = 0
         lots_in_stock = 0
@@ -282,24 +284,36 @@ def load_data():
                     elif status in ['In Stock','Pending Shipment']:
                         lots_in_stock += 1
 
-        gross_profit = 0
-        margin_pct = 0
-        roi_pct = 0
-        total_landed_sum = 0
+        # CORRECT P&L calculation using COGS method
+        # Sum landed cost per unit weighted by units sold
+        cost_of_goods_sold = 0
+        total_landed_full = 0
+
+        if len(inv_data) > 5:
+            for row in inv_data[5:]:
+                if len(row) > 14 and row[0]:
+                    qty_sold = safe_float(row[6]) if len(row) > 6 else 0
+                    cost_per_unit = safe_float(row[8]) if len(row) > 8 else 0
+                    cost_of_goods_sold += qty_sold * cost_per_unit
+
         if len(lc_data) > 5:
-            total_revenue_sum = 0
             for row in lc_data[5:]:
                 if len(row) > 40 and row[0]:
-                    ak = safe_float(row[36])
-                    an = safe_float(row[39])
-                    total_landed_sum += ak
-                    total_revenue_sum += an
-            gross_profit = total_revenue_sum - total_landed_sum
-            if total_revenue_sum > 0:
-                margin_pct = gross_profit / total_revenue_sum
-            if total_landed_sum > 0:
-                roi_pct = gross_profit / total_landed_sum
+                    total_landed_full += safe_float(row[36])
 
+        # True profit = revenue from sold units - cost of sold units
+        gross_profit = total_revenue - cost_of_goods_sold
+        margin_pct = (gross_profit / total_revenue) if total_revenue > 0 else 0
+        roi_pct = (gross_profit / cost_of_goods_sold) if cost_of_goods_sold > 0 else 0
+
+        # Break Even = revenue collected vs total cost spent
+        break_even = (total_revenue / proc_spend) if proc_spend > 0 else 0
+
+        # Inventory Value Recovery = revenue / (revenue + inventory value)
+        total_value = total_revenue + inv_value_usd
+        value_recovery = (total_revenue / total_value) if total_value > 0 else 0
+
+        # Cost breakdown
         cost_breakdown = {
             'Purchase Cost': proc_spend,
             'US Logistics': 0,
@@ -326,8 +340,6 @@ def load_data():
             'total_revenue': total_revenue,
             'cash_balance': cash_balance,
             'inv_value_usd': inv_value_usd,
-            'auction_budget': auction_budget,
-            'spent_auctions': spent_auctions,
             'avail_bidding': avail_bidding,
             'pct_used': pct_used,
             'pct_avail': pct_avail,
@@ -337,17 +349,18 @@ def load_data():
             'units_sold': units_sold,
             'units_remaining': units_remaining,
             'stock_sold_pct': stock_sold_pct,
-            'best_category': best_category,
             'gross_profit': gross_profit,
             'margin_pct': margin_pct,
             'roi_pct': roi_pct,
+            'cost_of_goods_sold': cost_of_goods_sold,
             'break_even': break_even,
-            'total_landed_sum': total_landed_sum,
+            'value_recovery': value_recovery,
+            'total_landed_full': total_landed_full,
             'lots_procured': lots_procured,
             'lots_sold': lots_sold,
             'lots_in_stock': lots_in_stock,
             'cost_breakdown': cost_breakdown,
-            'timestamp': datetime.now().strftime("%d %b %Y  %H:%M")
+            'timestamp': datetime.now().strftime("%d %b %Y  %I:%M %p")
         }
     except Exception as e:
         st.error(f"Data load error: {e}")
@@ -384,7 +397,7 @@ def progress_bar_row(title, pct, pct_label, fill_color, legend_items):
         f'<div class="prog-legend-item"><span class="prog-dot" style="background:{item["color"]};"></span>{item["label"]}</div>'
         for item in legend_items
     ])
-    return f"""<div class="prog-row"><div class="prog-label-row"><div class="prog-title">{title}</div><div class="prog-pct">{pct_label}</div></div><div class="prog-bar-bg"><div class="prog-bar-fill" style="width:{pct_clamped:.1f}%;background:linear-gradient(90deg,{fill_color},{fill_color}cc);"></div></div><div class="prog-legend">{legend_html}</div></div>"""
+    return f"""<div class="prog-row"><div class="prog-label-row"><div class="prog-title">{title}</div><div class="prog-pct">{pct_label}</div></div><div class="prog-bar-bg"><div class="prog-bar-fill" style="width:{pct_clamped:.1f}%;background:{fill_color};"></div></div><div class="prog-legend">{legend_html}</div></div>"""
 
 def section_hdr(icon, title):
     st.markdown(f'<div class="section-header">{icon}&nbsp;&nbsp;{title}</div>', unsafe_allow_html=True)
@@ -410,6 +423,7 @@ st.markdown(f"""
     <div class="kat-header-right">
         <div class="kat-company-name">Key Asset Technologies</div>
         <div class="kat-live-badge">🟢 LIVE DATA</div>
+        <div class="kat-time">{d['timestamp']}</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -421,19 +435,19 @@ section_hdr("💰", "CAPITAL OVERVIEW")
 
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    clr = health_color(d['cash_balance'], 1000, 0)
-    st.markdown(kpi_card("🏦", "CASH BALANCE", fmt_usd(d['cash_balance']), "Capital - Spent + Revenue", clr), unsafe_allow_html=True)
+    st.markdown(kpi_card("💵", "TOTAL CAPITAL", fmt_usd(d['total_capital']), "Total Funds Injected", "blue"), unsafe_allow_html=True)
 with col2:
-    st.markdown(kpi_card("💵", "TOTAL CAPITAL INJECTED", fmt_usd(d['total_capital']), "Total funds received", "blue"), unsafe_allow_html=True)
+    clr = health_color(d['pct_used'], 0.3, 0.7, higher_is_better=False)
+    st.markdown(kpi_card("📊", "DEPLOYED CAPITAL", fmt_usd(d['proc_spend']), f"{fmt_pct(d['pct_used'])} used", clr), unsafe_allow_html=True)
 with col3:
     clr = health_color(d['avail_bidding'], 2000, 500)
-    st.markdown(kpi_card("🎯", "AVAILABLE FOR BIDDING", fmt_usd(d['avail_bidding']), f"{fmt_pct(d['pct_avail'])} of budget free", clr), unsafe_allow_html=True)
+    st.markdown(kpi_card("🎯", "PROCUREMENT CAPITAL", fmt_usd(d['avail_bidding']), f"{fmt_pct(d['pct_avail'])} unused", clr), unsafe_allow_html=True)
 with col4:
-    clr = health_color(d['pct_used'], 0.3, 0.7, higher_is_better=False)
-    st.markdown(kpi_card("📊", "CAPITAL DEPLOYED", fmt_pct(d['pct_used']), fmt_usd(d['spent_auctions']) + " spent", clr), unsafe_allow_html=True)
+    clr = health_color(d['cash_balance'], 1000, 0)
+    st.markdown(kpi_card("🏦", "BALANCE CAPITAL", fmt_usd(d['cash_balance']), "Capital - Spent + Revenue", clr), unsafe_allow_html=True)
 
 # ============================================================
-# SECTION 2 — PROFITABILITY
+# SECTION 2 — PROFITABILITY (FIXED COGS METHOD)
 # ============================================================
 section_hdr("📈", "PROFITABILITY")
 
@@ -442,16 +456,16 @@ with col1:
     st.markdown(kpi_card("💰", "TOTAL REVENUE", fmt_usd(d['total_revenue']), "All sales collected", "green" if d['total_revenue'] > 0 else "gold"), unsafe_allow_html=True)
 with col2:
     clr = "green" if d['gross_profit'] > 0 else "red"
-    st.markdown(kpi_card("📈", "GROSS PROFIT", fmt_usd(d['gross_profit']), "Revenue minus landed cost", clr), unsafe_allow_html=True)
+    st.markdown(kpi_card("📈", "GROSS PROFIT", fmt_usd(d['gross_profit']), "Revenue minus cost of sold units", clr), unsafe_allow_html=True)
 with col3:
     clr = "green" if d['margin_pct'] > 0 else "red"
     st.markdown(kpi_card("🎯", "GROSS MARGIN", fmt_pct(d['margin_pct']), "Profit / Revenue", clr), unsafe_allow_html=True)
 with col4:
     clr = "green" if d['roi_pct'] > 0 else "red"
-    st.markdown(kpi_card("🔄", "ROI", fmt_pct(d['roi_pct']), "Profit / Landed Cost", clr), unsafe_allow_html=True)
+    st.markdown(kpi_card("🔄", "ROI", fmt_pct(d['roi_pct']), "Profit / Cost of Goods Sold", clr), unsafe_allow_html=True)
 with col5:
     clr = "green" if d['break_even'] >= 1 else "gold"
-    st.markdown(kpi_card("⚖️", "BREAK EVEN", fmt_pct(min(d['break_even'], 1)), "Revenue / Procurement", clr), unsafe_allow_html=True)
+    st.markdown(kpi_card("⚖️", "BREAK EVEN", fmt_pct(min(d['break_even'], 1)), "Revenue / Procurement Cost", clr), unsafe_allow_html=True)
 
 # ============================================================
 # SECTION 3 — INVENTORY HEALTH
@@ -470,7 +484,7 @@ with col4:
     st.markdown(kpi_card("💎", "INVENTORY VALUE", fmt_usd(d['inv_value_usd']), "At landed cost", "purple"), unsafe_allow_html=True)
 
 # ============================================================
-# SECTION 4 — SALES PERFORMANCE (moved above operations)
+# SECTION 4 — SALES PERFORMANCE
 # ============================================================
 section_hdr("🏆", "SALES PERFORMANCE")
 
@@ -486,8 +500,16 @@ with col3:
     clr = "green" if profit_per_unit > 0 else "red"
     st.markdown(kpi_card("📈", "PROFIT PER UNIT", fmt_usd(profit_per_unit), "Average profit per unit", clr), unsafe_allow_html=True)
 with col4:
-    best = d['best_category'] if d['best_category'] else "No sales yet"
-    st.markdown(kpi_card("🏆", "BEST CATEGORY", best, "Highest margin category", "green" if d['best_category'] else "gold"), unsafe_allow_html=True)
+    # Margin Trend
+    if d['units_sold'] > 0:
+        trend_value = fmt_pct(d['margin_pct'])
+        trend_sub = f"Based on {fmt_num(d['units_sold'])} units sold"
+        clr = "green" if d['margin_pct'] > 0 else "red"
+    else:
+        trend_value = "—"
+        trend_sub = "No sales yet"
+        clr = "gold"
+    st.markdown(kpi_card("📊", "MARGIN TREND", trend_value, trend_sub, clr), unsafe_allow_html=True)
 
 # ============================================================
 # SECTION 5 — OPERATIONAL PROGRESS
@@ -526,7 +548,7 @@ with col_right:
 
 col_left, col_right = st.columns(2)
 
-# Bar 3 — Break Even Progress
+# Bar 3 — Break Even Progress (Total Cost → Revenue → Gap order)
 with col_left:
     st.markdown(progress_bar_row(
         title="Break Even Progress",
@@ -534,27 +556,27 @@ with col_left:
         pct_label=fmt_pct(min(d['break_even'], 1)),
         fill_color="#27AE60",
         legend_items=[
+            {"color": "#2471A3", "label": f"Total Cost: {fmt_usd(d['proc_spend'])}"},
             {"color": "#27AE60", "label": f"Revenue: {fmt_usd(d['total_revenue'])}"},
-            {"color": "#E74C3C", "label": f"Gap to Cover: {fmt_usd(max(d['proc_spend'] - d['total_revenue'], 0))}"},
-            {"color": "#2471A3", "label": f"Total Cost: {fmt_usd(d['proc_spend'])}"}
+            {"color": "#E74C3C", "label": f"Gap: {fmt_usd(max(d['proc_spend'] - d['total_revenue'], 0))}"}
         ]
     ), unsafe_allow_html=True)
 
-# Bar 4 — Units Sold vs Procured (replaced lots progress)
+# Bar 4 — Inventory Value Recovery
 with col_right:
     st.markdown(progress_bar_row(
-        title="Units Sold vs Procured",
-        pct=d['stock_sold_pct'],
-        pct_label=f"{fmt_pct(d['stock_sold_pct'])} ({fmt_num(d['units_sold'])} of {fmt_num(d['units_procured'])})",
+        title="Inventory Value Recovery",
+        pct=d['value_recovery'],
+        pct_label=fmt_pct(d['value_recovery']),
         fill_color="#9B59B6",
         legend_items=[
-            {"color": "#9B59B6", "label": f"Sold: {fmt_num(d['units_sold'])} units"},
-            {"color": "#E67E22", "label": f"Remaining: {fmt_num(d['units_remaining'])} units"},
-            {"color": "#2471A3", "label": f"Total: {fmt_num(d['units_procured'])} units"}
+            {"color": "#27AE60", "label": f"Cash: {fmt_usd(d['total_revenue'])}"},
+            {"color": "#9B59B6", "label": f"Stuck in Stock: {fmt_usd(d['inv_value_usd'])}"},
+            {"color": "#2471A3", "label": f"Total Value: {fmt_usd(d['total_revenue'] + d['inv_value_usd'])}"}
         ]
     ), unsafe_allow_html=True)
 
-# Bar 5 — Pipeline Speed (full width)
+# Bar 5 — Pipeline Speed
 total_pipeline = d['avg_days_ship'] + d['avg_days_clear']
 pipeline_pct = min(total_pipeline / 30, 1) if total_pipeline > 0 else 0
 st.markdown(progress_bar_row(
@@ -659,7 +681,7 @@ st.markdown(f"""
         Key Asset Technologies &copy; 2025 &nbsp;|&nbsp; IT Asset Business System v2
     </div>
     <div style="color:rgba(255,255,255,0.5);font-size:11px;">
-        Data refreshes every 10 minutes &nbsp;|&nbsp; Last updated: {d['timestamp']}
+        Auto-refreshes every 10 minutes &nbsp;·&nbsp; {d['timestamp']}
     </div>
 </div>
 """, unsafe_allow_html=True)
