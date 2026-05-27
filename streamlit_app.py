@@ -1,6 +1,6 @@
 # ============================================================
 # KAT — IT Asset Business System v2
-# Professional Streamlit Dashboard v2.3 — FINAL
+# Professional Streamlit Dashboard v2.4
 # ============================================================
 
 import streamlit as st
@@ -10,6 +10,7 @@ import numpy as np
 import plotly.graph_objects as go
 from google.oauth2.service_account import Credentials
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import json
 
 # ============================================================
@@ -151,15 +152,15 @@ header { visibility: hidden; }
 }
 .prog-title { font-size: 13px; font-weight: 600; color: #5D6D7E; }
 .prog-pct { font-size: 14px; font-weight: 800; color: #1B3A6B; }
-.prog-bar-bg {
-    background: #EEF2F9;
+.prog-bar-container {
+    display: flex;
+    width: 100%;
+    height: 18px;
     border-radius: 20px;
-    height: 14px;
     overflow: hidden;
 }
-.prog-bar-fill {
+.prog-bar-segment {
     height: 100%;
-    border-radius: 20px;
     transition: width 0.8s ease;
 }
 .prog-legend {
@@ -261,13 +262,11 @@ def load_data():
         units_sold = safe_float(gs(48))
         units_remaining = safe_float(gs(49))
 
-        # Calculate from raw numbers (avoid format bugs)
         pct_used = (proc_spend / total_capital) if total_capital > 0 else 0
         pct_avail = ((total_capital - proc_spend) / total_capital) if total_capital > 0 else 0
         avail_bidding = total_capital - proc_spend
         stock_sold_pct = (units_sold / units_procured) if units_procured > 0 else 0
 
-        # Lot counts
         lots_procured = 0
         lots_sold = 0
         lots_in_stock = 0
@@ -284,11 +283,7 @@ def load_data():
                     elif status in ['In Stock','Pending Shipment']:
                         lots_in_stock += 1
 
-        # CORRECT P&L calculation using COGS method
-        # Sum landed cost per unit weighted by units sold
         cost_of_goods_sold = 0
-        total_landed_full = 0
-
         if len(inv_data) > 5:
             for row in inv_data[5:]:
                 if len(row) > 14 and row[0]:
@@ -296,24 +291,14 @@ def load_data():
                     cost_per_unit = safe_float(row[8]) if len(row) > 8 else 0
                     cost_of_goods_sold += qty_sold * cost_per_unit
 
-        if len(lc_data) > 5:
-            for row in lc_data[5:]:
-                if len(row) > 40 and row[0]:
-                    total_landed_full += safe_float(row[36])
-
-        # True profit = revenue from sold units - cost of sold units
         gross_profit = total_revenue - cost_of_goods_sold
         margin_pct = (gross_profit / total_revenue) if total_revenue > 0 else 0
         roi_pct = (gross_profit / cost_of_goods_sold) if cost_of_goods_sold > 0 else 0
-
-        # Break Even = revenue collected vs total cost spent
         break_even = (total_revenue / proc_spend) if proc_spend > 0 else 0
 
-        # Inventory Value Recovery = revenue / (revenue + inventory value)
         total_value = total_revenue + inv_value_usd
         value_recovery = (total_revenue / total_value) if total_value > 0 else 0
 
-        # Cost breakdown
         cost_breakdown = {
             'Purchase Cost': proc_spend,
             'US Logistics': 0,
@@ -332,6 +317,10 @@ def load_data():
                     cost_breakdown['Agent Fees'] += safe_float(row[30])
                     cost_breakdown['Local Transport'] += safe_float(row[31])
                     cost_breakdown['US Logistics'] += safe_float(row[35])
+
+        # Chicago time
+        chicago_tz = ZoneInfo("America/Chicago")
+        chicago_time = datetime.now(chicago_tz).strftime("%d %b %Y  %I:%M %p")
 
         return {
             'usd_aed_rate': usd_aed_rate,
@@ -355,12 +344,11 @@ def load_data():
             'cost_of_goods_sold': cost_of_goods_sold,
             'break_even': break_even,
             'value_recovery': value_recovery,
-            'total_landed_full': total_landed_full,
             'lots_procured': lots_procured,
             'lots_sold': lots_sold,
             'lots_in_stock': lots_in_stock,
             'cost_breakdown': cost_breakdown,
-            'timestamp': datetime.now().strftime("%d %b %Y  %I:%M %p")
+            'timestamp': chicago_time
         }
     except Exception as e:
         st.error(f"Data load error: {e}")
@@ -391,13 +379,20 @@ def health_color(val, good, warn, higher_is_better=True):
 def kpi_card(icon, label, value, sub="", color="blue"):
     return f"""<div class="kpi-card {color}"><span class="kpi-icon">{icon}</span><div class="kpi-label">{label}</div><div class="kpi-value">{value}</div><div class="kpi-sub">{sub}</div></div>"""
 
-def progress_bar_row(title, pct, pct_label, fill_color, legend_items):
-    pct_clamped = min(max(pct * 100, 0), 100)
+def segmented_bar_row(title, pct_label, segments, legend_items):
+    """
+    segments = list of dicts: [{"width": 60, "color": "#E67E22"}, {"width": 40, "color": "#27AE60"}]
+    width values should add up to 100
+    """
+    seg_html = ''.join([
+        f'<div class="prog-bar-segment" style="width:{seg["width"]:.2f}%;background:{seg["color"]};"></div>'
+        for seg in segments
+    ])
     legend_html = ''.join([
         f'<div class="prog-legend-item"><span class="prog-dot" style="background:{item["color"]};"></span>{item["label"]}</div>'
         for item in legend_items
     ])
-    return f"""<div class="prog-row"><div class="prog-label-row"><div class="prog-title">{title}</div><div class="prog-pct">{pct_label}</div></div><div class="prog-bar-bg"><div class="prog-bar-fill" style="width:{pct_clamped:.1f}%;background:{fill_color};"></div></div><div class="prog-legend">{legend_html}</div></div>"""
+    return f"""<div class="prog-row"><div class="prog-label-row"><div class="prog-title">{title}</div><div class="prog-pct">{pct_label}</div></div><div class="prog-bar-container">{seg_html}</div><div class="prog-legend">{legend_html}</div></div>"""
 
 def section_hdr(icon, title):
     st.markdown(f'<div class="section-header">{icon}&nbsp;&nbsp;{title}</div>', unsafe_allow_html=True)
@@ -423,7 +418,7 @@ st.markdown(f"""
     <div class="kat-header-right">
         <div class="kat-company-name">Key Asset Technologies</div>
         <div class="kat-live-badge">🟢 LIVE DATA</div>
-        <div class="kat-time">{d['timestamp']}</div>
+        <div class="kat-time">{d['timestamp']} CT</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -447,7 +442,7 @@ with col4:
     st.markdown(kpi_card("🏦", "BALANCE CAPITAL", fmt_usd(d['cash_balance']), "Capital - Spent + Revenue", clr), unsafe_allow_html=True)
 
 # ============================================================
-# SECTION 2 — PROFITABILITY (FIXED COGS METHOD)
+# SECTION 2 — PROFITABILITY
 # ============================================================
 section_hdr("📈", "PROFITABILITY")
 
@@ -500,7 +495,6 @@ with col3:
     clr = "green" if profit_per_unit > 0 else "red"
     st.markdown(kpi_card("📈", "PROFIT PER UNIT", fmt_usd(profit_per_unit), "Average profit per unit", clr), unsafe_allow_html=True)
 with col4:
-    # Margin Trend
     if d['units_sold'] > 0:
         trend_value = fmt_pct(d['margin_pct'])
         trend_sub = f"Based on {fmt_num(d['units_sold'])} units sold"
@@ -512,19 +506,23 @@ with col4:
     st.markdown(kpi_card("📊", "MARGIN TREND", trend_value, trend_sub, clr), unsafe_allow_html=True)
 
 # ============================================================
-# SECTION 5 — OPERATIONAL PROGRESS
+# SECTION 5 — OPERATIONAL PROGRESS (SEGMENTED BARS)
 # ============================================================
 section_hdr("📊", "OPERATIONAL PROGRESS")
 
 col_left, col_right = st.columns(2)
 
-# Bar 1 — Capital Utilization
+# Bar 1 — Capital Utilization (orange spent + green available)
 with col_left:
-    st.markdown(progress_bar_row(
+    spent_pct = d['pct_used'] * 100
+    avail_pct = d['pct_avail'] * 100
+    st.markdown(segmented_bar_row(
         title="Capital Utilization",
-        pct=d['pct_used'],
-        pct_label=fmt_pct(d['pct_used']),
-        fill_color="#E67E22",
+        pct_label=f"{fmt_pct(d['pct_used'])} deployed",
+        segments=[
+            {"width": spent_pct, "color": "#E67E22"},
+            {"width": avail_pct, "color": "#27AE60"}
+        ],
         legend_items=[
             {"color": "#E67E22", "label": f"Spent: {fmt_usd(d['proc_spend'])}"},
             {"color": "#27AE60", "label": f"Available: {fmt_usd(d['avail_bidding'])}"},
@@ -532,13 +530,17 @@ with col_left:
         ]
     ), unsafe_allow_html=True)
 
-# Bar 2 — Stock Movement
+# Bar 2 — Stock Movement (green sold + orange remaining)
 with col_right:
-    st.markdown(progress_bar_row(
+    sold_pct = d['stock_sold_pct'] * 100
+    rem_pct = (1 - d['stock_sold_pct']) * 100
+    st.markdown(segmented_bar_row(
         title="Stock Movement",
-        pct=d['stock_sold_pct'],
-        pct_label=fmt_pct(d['stock_sold_pct']),
-        fill_color="#27AE60",
+        pct_label=f"{fmt_pct(d['stock_sold_pct'])} sold",
+        segments=[
+            {"width": sold_pct, "color": "#27AE60"},
+            {"width": rem_pct, "color": "#E67E22"}
+        ],
         legend_items=[
             {"color": "#27AE60", "label": f"Sold: {fmt_num(d['units_sold'])} units"},
             {"color": "#E67E22", "label": f"Remaining: {fmt_num(d['units_remaining'])} units"},
@@ -548,13 +550,17 @@ with col_right:
 
 col_left, col_right = st.columns(2)
 
-# Bar 3 — Break Even Progress (Total Cost → Revenue → Gap order)
+# Bar 3 — Break Even Progress (green revenue + red gap)
 with col_left:
-    st.markdown(progress_bar_row(
+    rev_pct = min(d['break_even'], 1) * 100
+    gap_pct = (1 - min(d['break_even'], 1)) * 100
+    st.markdown(segmented_bar_row(
         title="Break Even Progress",
-        pct=min(d['break_even'], 1),
-        pct_label=fmt_pct(min(d['break_even'], 1)),
-        fill_color="#27AE60",
+        pct_label=f"{fmt_pct(min(d['break_even'], 1))} recovered",
+        segments=[
+            {"width": rev_pct, "color": "#27AE60"},
+            {"width": gap_pct, "color": "#E74C3C"}
+        ],
         legend_items=[
             {"color": "#2471A3", "label": f"Total Cost: {fmt_usd(d['proc_spend'])}"},
             {"color": "#27AE60", "label": f"Revenue: {fmt_usd(d['total_revenue'])}"},
@@ -562,13 +568,17 @@ with col_left:
         ]
     ), unsafe_allow_html=True)
 
-# Bar 4 — Inventory Value Recovery
+# Bar 4 — Inventory Value Recovery (green cash + purple stuck)
 with col_right:
-    st.markdown(progress_bar_row(
+    cash_pct = d['value_recovery'] * 100
+    stuck_pct = (1 - d['value_recovery']) * 100
+    st.markdown(segmented_bar_row(
         title="Inventory Value Recovery",
-        pct=d['value_recovery'],
-        pct_label=fmt_pct(d['value_recovery']),
-        fill_color="#9B59B6",
+        pct_label=f"{fmt_pct(d['value_recovery'])} converted to cash",
+        segments=[
+            {"width": cash_pct, "color": "#27AE60"},
+            {"width": stuck_pct, "color": "#9B59B6"}
+        ],
         legend_items=[
             {"color": "#27AE60", "label": f"Cash: {fmt_usd(d['total_revenue'])}"},
             {"color": "#9B59B6", "label": f"Stuck in Stock: {fmt_usd(d['inv_value_usd'])}"},
@@ -576,18 +586,34 @@ with col_right:
         ]
     ), unsafe_allow_html=True)
 
-# Bar 5 — Pipeline Speed
+# Bar 5 — Pipeline Speed (Option C — segments + target line)
 total_pipeline = d['avg_days_ship'] + d['avg_days_clear']
-pipeline_pct = min(total_pipeline / 30, 1) if total_pipeline > 0 else 0
-st.markdown(progress_bar_row(
+target_days = 30
+remaining_days = max(target_days - total_pipeline, 0)
+
+if total_pipeline > 0:
+    ship_pct = (d['avg_days_ship'] / target_days) * 100
+    clear_pct = (d['avg_days_clear'] / target_days) * 100
+    remaining_pct = (remaining_days / target_days) * 100
+else:
+    ship_pct = 0
+    clear_pct = 0
+    remaining_pct = 100
+
+pipeline_color = "#E74C3C" if total_pipeline > 14 else "#F39C12" if total_pipeline > 7 else "#27AE60"
+
+st.markdown(segmented_bar_row(
     title="Pipeline Speed (Purchase to Sale-Ready)",
-    pct=pipeline_pct,
-    pct_label=f"{total_pipeline:.1f} days of 30 day target",
-    fill_color="#E74C3C" if total_pipeline > 14 else "#F39C12" if total_pipeline > 7 else "#27AE60",
+    pct_label=f"{total_pipeline:.1f} of 30 day target",
+    segments=[
+        {"width": ship_pct, "color": "#3498DB"},
+        {"width": clear_pct, "color": "#9B59B6"},
+        {"width": remaining_pct, "color": "#ECF0F1"}
+    ],
     legend_items=[
         {"color": "#3498DB", "label": f"Ship Days: {d['avg_days_ship']:.1f}"},
         {"color": "#9B59B6", "label": f"Clear Days: {d['avg_days_clear']:.1f}"},
-        {"color": "#E74C3C", "label": f"Target: under 14 days"}
+        {"color": "#ECF0F1", "label": f"Remaining to Target: {remaining_days:.1f} days"}
     ]
 ), unsafe_allow_html=True)
 
@@ -681,7 +707,7 @@ st.markdown(f"""
         Key Asset Technologies &copy; 2025 &nbsp;|&nbsp; IT Asset Business System v2
     </div>
     <div style="color:rgba(255,255,255,0.5);font-size:11px;">
-        Auto-refreshes every 10 minutes &nbsp;·&nbsp; {d['timestamp']}
+        Auto-refreshes every 10 minutes &nbsp;·&nbsp; {d['timestamp']} CT
     </div>
 </div>
 """, unsafe_allow_html=True)
